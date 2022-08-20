@@ -1,2 +1,11 @@
-await-std
+# Prettier Plugin
+package.json
+package-lock.json
+node_modules
+
+# Composer Libraries
+vendor
+
+# Intelisense
 await-generator
+await-std

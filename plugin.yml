@@ -1,0 +1,25 @@
+---
+name: HTNProtocol
+version: 0.0.1
+main: HTNProtocol\Main
+api: 4.5.2
+src-namespace-prefix: HTNProtocol
+commands:
+  test:
+    description: Test Command
+    usage: "/test"
+    permission: HTNProtocol.command.test
+permissions:
+  HTNProtocol.command.test:
+    default: op
+    description: "test"
+# projects:
+#   await-std:
+#     path: SOF3/await-std
+#     type: library
+#     model: virion
+#   await-generator:
+#     path: SOF3/await-generator
+#     type: library
+#     model: virion
+... 
