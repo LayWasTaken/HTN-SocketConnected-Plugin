@@ -9,14 +9,14 @@ commands:
         description: Test Command
         usage: "/test"
         permission: HTNProtocol.command.test
-    connect_discord:
+    connectdc:
         description: Generates a code for you to connect to discord
         usage: "/connectdc"
-        permission: HTNProtocol.command.connect_discord
+        permission: HTNProtocol.command.connectdc
 permissions:
     HTNProtocol.command.test:
         default: op
         description: "test"
-    HTNProtocol.command.connect_discord:
+    HTNProtocol.command.connectdc:
         default: op
         description: "test"
