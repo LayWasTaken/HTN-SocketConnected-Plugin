@@ -5,21 +5,18 @@ main: HTNProtocol\Main
 api: 4.5.2
 src-namespace-prefix: HTNProtocol
 commands:
-  test:
-    description: Test Command
-    usage: "/test"
-    permission: HTNProtocol.command.test
+    test:
+        description: Test Command
+        usage: "/test"
+        permission: HTNProtocol.command.test
+    connect_discord:
+        description: Generates a code for you to connect to discord
+        usage: "/connectdc"
+        permission: HTNProtocol.command.connect_discord
 permissions:
-  HTNProtocol.command.test:
-    default: op
-    description: "test"
-# projects:
-#   await-std:
-#     path: SOF3/await-std
-#     type: library
-#     model: virion
-#   await-generator:
-#     path: SOF3/await-generator
-#     type: library
-#     model: virion
-... 
+    HTNProtocol.command.test:
+        default: op
+        description: "test"
+    HTNProtocol.command.connect_discord:
+        default: op
+        description: "test"
