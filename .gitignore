@@ -9,3 +9,4 @@ vendor
 # Intelisense
 await-generator
 await-std
+libasynql
