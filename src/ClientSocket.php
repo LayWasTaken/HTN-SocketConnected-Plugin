@@ -38,13 +38,15 @@ class ClientSocket
         require_once __DIR__ . "/../vendor/autoload.php";
         try {
             echo "ws://{$this->host}:{$this->port}";
-            $this->sock = new Client("wss://{$this->host}:{$this->port}/");
+            $this->sock = new Client("ws://{$this->host}:{$this->port}/");
             $this->sock->text(
                 json_encode([
                     "name" => $this->clientName,
                     "password" => $this->password,
                 ])
             );
+            $this->handleSentData();
+            return true;
         } catch (\Throwable $th) {
             echo $th->getMessage();
             return false;
@@ -69,7 +71,7 @@ class ClientSocket
     private function handleSentData()
     {
         Await::f2c(function () {
-            $this->sock->setTimeout(0.2);
+            $this->sock->setTimeout(0.02);
             while (true) {
                 if (!$this->sock->isConnected()) {
                     yield from $this->std->sleep(1);
