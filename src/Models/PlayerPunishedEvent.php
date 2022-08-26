@@ -1,10 +1,11 @@
 <?php
-namespace HTNProtocol\Streams\JsonStreamClasses\Others;
+namespace HTNProtocol\Models;
 
-use HTNProtocol\Streams\Exceptions\InvalidSetException;
-use HTNProtocol\Streams\Extra\PunishmentTime;
+use HTNProtocol\Exceptions\InvalidSetException;
+use HTNProtocol\Models\Extra\PunishmentTime;
 
-class PlayerPunishedEvent {
+class PlayerPunishedEvent
+{
     public string $player;
     public string $type;
     public ?PunishmentTime $time;
@@ -12,7 +13,18 @@ class PlayerPunishedEvent {
     public string $reason;
     public function __set($name, $value)
     {
-        if($name === "type")
-            if(!($value === "banned" || $value === "kicked" || $value === "mute" || $value === "warned" || $value === "tempban")) throw new InvalidSetException($name, $value, "Invalid type");
+        if ($name === "type") {
+            if (
+                !(
+                    $value === "banned" ||
+                    $value === "kicked" ||
+                    $value === "mute" ||
+                    $value === "warned" ||
+                    $value === "tempban"
+                )
+            ) {
+                throw new InvalidSetException($name, $value, "Invalid type");
+            }
+        }
     }
 }

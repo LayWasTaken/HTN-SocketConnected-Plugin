@@ -1,9 +1,10 @@
 <?php
-namespace HTNProtocol\Streams\JsonStreamClasses\Others;
+namespace HTNProtocol\Models;
 
-use HTNProtocol\Streams\Extra\Coordinates;
+use HTNProtocol\Models\Extra\Coordinates;
 
-class IslandMachinesEvent {
+class IslandMachinesEvent
+{
     public const NET = "net";
     public const DRILL = "drill";
     public const CANNON = "cannon";
@@ -21,11 +22,10 @@ class IslandMachinesEvent {
     ) {
     }
     // public function __set($name, $value)
-    // {   
+    // {
     //     if($name === "machine")
     //         if(!($value === "drill" || $value === "net" || $value === "cannon" || $value === "cubegen")) throw new InvalidSetException($name, $value, "Invalid machine");
     //     if($name === "event")
     //         if(!($value === "removed" || $value === "placed")) throw new InvalidSetException($name, $value, "Invalid event");
     // }
-
 }
