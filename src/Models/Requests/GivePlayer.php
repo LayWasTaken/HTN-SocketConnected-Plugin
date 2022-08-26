@@ -1,5 +1,5 @@
 <?php
-namespace HTNProtocol\Streams\JsonStreamClasses\Requests;
+namespace HTNProtocol\Models\Requests;
 
 class GivePlayer
 {

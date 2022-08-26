@@ -1,5 +1,5 @@
 <?php
-namespace HTNProtocol\Streams\JsonStreamClasses\Requests;
+namespace HTNProtocol\Models\Requests;
 
 use HTNProtocol\Exceptions\InvalidSetException;
 use HTNProtocol\Models\Extra\PunishmentTime;

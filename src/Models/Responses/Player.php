@@ -1,5 +1,5 @@
 <?php
-namespace HTNProtocol\Streams\JsonStreamClasses\Responses;
+namespace HTNProtocol\Models\Responses;
 
 use HTNProtocol\Models\Extra\KillStat;
 use HTNProtocol\Exceptions\InvalidSetException;
