@@ -48,7 +48,6 @@ class ClientSocket
             $this->handleSentData();
             return true;
         } catch (\Throwable $th) {
-            echo $th->getMessage();
             return false;
         }
         return true;
