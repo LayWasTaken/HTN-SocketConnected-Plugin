@@ -6,10 +6,17 @@ use HTNProtocol\Models\ServerCrash;
 use HTNProtocol\Models\EconomyEvent;
 use pocketmine\command\CommandSender;
 use pocketmine\command\Command;
+use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerJoinEvent;
+use pocketmine\event\player\PlayerQuitEvent;
+use pocketmine\item\ItemIds;
+use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
-use pocketmine\scheduler\Task;
-use WebSocket\Client;
+use pocketmine\utils\Config;
+use pocketmine\world\Position;
+use poggit\libasynql\DataConnector;
+use poggit\libasynql\libasynql;
 
 class Main extends PluginBase implements Listener
 {
@@ -18,8 +25,19 @@ class Main extends PluginBase implements Listener
      * @var string[] $LastCrashes
      */
     private array $LastCrashes = [];
+    private DataConnector $db;
     public function onEnable(): void
     {
+        $this->config = new Config($this->getDataFolder() . "config.yml");
+        $this->db = libasynql::create(
+            $this,
+            $this->getConfig()->get("database"),
+            [
+                "mysql" => "mysql.sql",
+            ]
+        );
+        $this->db->executeGeneric("players.init");
+        $this->db->executeGeneric("discord_codes.init");
         $this->LastCrashes = array_filter(
             scandir(
                 str_replace("plugins\HTNProtocol\src", "crashdumps", __DIR__)
@@ -43,6 +61,9 @@ class Main extends PluginBase implements Listener
                 echo "FOOO";
             }
         );
+        $this->getServer()
+            ->getPluginManager()
+            ->registerEvents(new Events($this->sock, $this->db), $this);
     }
     public function onCommand(
         CommandSender $sender,
@@ -50,9 +71,35 @@ class Main extends PluginBase implements Listener
         string $label,
         array $args
     ): bool {
-        if (array_key_exists(0, $args) && $args[0] === "r") {
-            throw new \Exception("ERROR");
-            return true;
+        if ($sender instanceof Player) {
+            if ($command->getName() === "connectdc") {
+                if (!array_key_exists(0, $args)) {
+                    $sender->sendMessage(
+                        "Must add a discord tag or id to connect"
+                    );
+                    return false;
+                }
+                $code = mt_rand(1000, 999999);
+                $this->db->executeInsert(
+                    "discord_codes.insert",
+                    [
+                        "xuid" => $sender->getXuid(),
+                        "discord" => $args[0],
+                        "code" => $code,
+                    ],
+                    function () use ($sender, $code) {
+                        $sender->sendMessage(
+                            "You can only generate a new code every 12 days so pls remember it\nCode: $code"
+                        );
+                    },
+                    function ($err) use ($sender) {
+                        var_dump($err);
+                        $sender->sendMessage(
+                            "Something went wrong try again later"
+                        );
+                    }
+                );
+            }
         }
         return true;
     }
@@ -96,18 +143,10 @@ class Main extends PluginBase implements Listener
                 }
                 fclose($file);
                 echo $crash;
-                var_dump($this->sock->sendData(new ServerCrash($crash), "all"));
+                // var_dump($this->sock->sendData(new ServerCrash($crash), "all"));
             }
         }
+        isset($this->db) ? $this->db->close() : 0;
         $this->sock->closeConnection();
     }
-
-    // public function onDataReceive(RequestReceivedEvent $event)
-    // {
-    //     $data = $event->getData();
-    //     if ($data instanceof PlayerPunish) {
-    //         var_dump($data);
-    //         $this->sock->sendResponse("DiscordBot", $event->getId(), null);
-    //     }
-    // }
 }
