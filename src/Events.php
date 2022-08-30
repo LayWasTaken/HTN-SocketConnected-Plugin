@@ -1,8 +1,11 @@
 <?php
 namespace HTNProtocol;
 
+use HTNProtocol\Events\DataReceivedEvent;
+use HTNProtocol\Events\RequestReceivedEvent;
 use HTNProtocol\Models\PlayerEvent;
 use HTNProtocol\Models\PlayerMessageEvent;
+use HTNProtocol\Models\Requests\PlayerPunish;
 use PDO;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerChatEvent;
@@ -59,5 +62,12 @@ class Events implements Listener
             ),
             "DiscordBot"
         );
+    }
+    public function onDataReceive(RequestReceivedEvent $event)
+    {
+        $data = $event->getData();
+        if ($data instanceof PlayerPunish) {
+            $this->sock->sendResponse("DiscordBot", $event->getId());
+        }
     }
 }
