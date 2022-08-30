@@ -8,13 +8,19 @@ class Receivable {
     /**
      * @param string[] $acceptables
      */
-    public static function create(string $namespace, array $acceptables, ?\Closure $onReceive):Receivable|string{
+    public static function create(
+        string $namespace,
+        array $acceptables,
+        ?\Closure $onReceive
+    ): Receivable|string {
         foreach ($acceptables as $key => $value) {
-            if(!is_string($value)) return;
+            if (!is_string($value)) {
+                return "$value isnt a string";
+            }
         }
-        $receivable = new self;
+        $receivable = new self();
         $receivable->namespace = $namespace;
-        $receivable->onReceivable = $onReceive;
+        $receivable->onReceive = $onReceive;
         $receivable->acceptables = $acceptables;
         return $receivable;
     }
