@@ -6,44 +6,39 @@ use HTNProtocol\Models\Extra\Machine;
 use HTNProtocol\Models\Extra\Member;
 use HTNProtocol\Models\Extra\Spawner;
 
-class Island
-{
+class Island {
     /**
      * @var ?Machine[]
      */
-    public $machines;
+    public array $machines;
     /**
      * @var ?Cubegen[]
      */
-    public $cubegens;
+    public array $cubegens;
     /**
      * @var Member[]
      */
-    public $members;
+    public array $members;
     /**
      * @var ?Spawner[]
      */
-    public $spawners;
+    public array $spawners;
 
-    public function __construct(Member ...$members)
-    {
+    public function __construct(Member ...$members) {
         $this->members = $members;
     }
 
-    public function setMachines(Machine ...$machines)
-    {
+    public function setMachines(Machine ...$machines) {
         $this->machines = $machines;
         return $this;
     }
 
-    public function setSpawners(Spawner ...$spawners)
-    {
+    public function setSpawners(Spawner ...$spawners) {
         $this->spawners = $spawners;
         return $this;
     }
 
-    public function setCubegens(Cubegen ...$cubegens)
-    {
+    public function setCubegens(Cubegen ...$cubegens) {
         $this->cubegens = $cubegens;
         return $this;
     }
