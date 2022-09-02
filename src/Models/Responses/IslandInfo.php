@@ -6,7 +6,7 @@ use HTNProtocol\Models\Extra\Machine;
 use HTNProtocol\Models\Extra\Member;
 use HTNProtocol\Models\Extra\Spawner;
 
-class Island {
+class IslandInfo {
     /**
      * @var ?Machine[]
      */
@@ -23,7 +23,6 @@ class Island {
      * @var ?Spawner[]
      */
     public array $spawners;
-
     public function __construct(Member ...$members) {
         $this->members = $members;
     }

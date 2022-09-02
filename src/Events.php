@@ -13,61 +13,56 @@ use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\event\player\PlayerQuitEvent;
 use poggit\libasynql\DataConnector;
 
-class Events implements Listener
-{
+class Events implements Listener {
     public function __construct(
         private ClientSocket $sock,
         private DataConnector $db
     ) {
     }
 
-    public function onJoin(PlayerJoinEvent $event)
-    {
+    public function onJoin(PlayerJoinEvent $event) {
         $p = $event->getPlayer();
         if (!$p->hasPlayedBefore()) {
-            $this->db->executeInsert("players.insert", [
-                "xuid" => $p->getXuid(),
-                "name" => $p->getName(),
+            $this->db->executeInsert('players.insert', [
+                'xuid' => $p->getXuid(),
+                'name' => $p->getName(),
             ]);
         }
         $this->sock->sendData(
             new \HTNProtocol\Models\PlayerEvent(
-                "join",
+                'join',
                 $p->getName(),
                 null,
                 !$p->hasPlayedBefore()
             ),
-            "all"
+            'all'
         );
     }
-    public function onQuit(PlayerQuitEvent $event)
-    {
+    public function onQuit(PlayerQuitEvent $event) {
         $p = $event->getPlayer();
         $this->sock->sendData(
             new \HTNProtocol\Models\PlayerEvent(
-                "quit",
+                'quit',
                 $p->getName(),
                 null,
                 !$p->hasPlayedBefore()
             ),
-            "all"
+            'all'
         );
     }
-    public function onMessage(PlayerChatEvent $event)
-    {
+    public function onMessage(PlayerChatEvent $event) {
         $this->sock->sendData(
             new PlayerMessageEvent(
                 $event->getPlayer()->getName(),
                 $event->getMessage()
             ),
-            "DiscordBot"
+            'DiscordBot'
         );
     }
-    public function onDataReceive(RequestReceivedEvent $event)
-    {
+    public function onDataReceive(RequestReceivedEvent $event) {
         $data = $event->getData();
         if ($data instanceof PlayerPunish) {
-            $this->sock->sendResponse("DiscordBot", $event->getId());
+            $this->sock->sendResponse('DiscordBot', $event->getId());
         }
     }
 }

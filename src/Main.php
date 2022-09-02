@@ -1,6 +1,9 @@
 <?php
 namespace HTNProtocol;
 
+use HTNProtocol\Models\Extra\Machine;
+use HTNProtocol\Models\Requests\GetIslandInfo;
+use HTNProtocol\Models\Responses\IslandInfo;
 use HTNProtocol\Models\Responses\PlayerInfo;
 use pocketmine\command\CommandSender;
 use pocketmine\command\Command;
@@ -10,6 +13,9 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\utils\Config;
 use poggit\libasynql\DataConnector;
 use poggit\libasynql\libasynql;
+use HTNProtocol\Models\Extra\Member;
+use HTNProtocol\Models\Requests\GivePlayer;
+
 class Main extends PluginBase implements Listener {
     public ClientSocket $sock;
     /**
@@ -68,6 +74,34 @@ class Main extends PluginBase implements Listener {
             function ($data) {
                 var_dump($data);
                 echo 'FOOO';
+            }
+        );
+        $this->sock->registerReceivable(
+            '\HTNProtocol\Models\Requests\GivePlayer',
+            ['DiscordBot'],
+            function (GivePlayer $request, string $id) {
+                $p = $this->getServer()->getPlayerExact($request->player);
+                if (!$p) {
+                    return $this->sock->sendResponse(
+                        'DiscordBot',
+                        $id,
+                        'Invalid Player'
+                    );
+                }
+                if ($request->give === 'money') {
+                    $p->sendMessage(
+                        'You have been given ' + $request->amount + ' Money'
+                    );
+                    $this->sock->sendResponse('DiscordBot', $id);
+                    return;
+                }
+                $p->sendMessage(
+                    'You have been given ' +
+                        $request->amount +
+                        ' ' +
+                        $request->give
+                );
+                $this->sock->sendResponse('DiscordBot', $id);
             }
         );
         $this->getServer()
@@ -157,4 +191,10 @@ class Main extends PluginBase implements Listener {
         isset($this->db) ? $this->db->close() : 0;
         $this->sock->closeConnection();
     }
+}
+/**
+ * @param array{'p': 12} $foo
+ */
+function foo($foo) {
+    $foo[''];
 }
