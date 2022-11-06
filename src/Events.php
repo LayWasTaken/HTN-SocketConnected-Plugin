@@ -1,12 +1,9 @@
 <?php
 namespace HTNProtocol;
 
-use HTNProtocol\Events\DataReceivedEvent;
 use HTNProtocol\Events\RequestReceivedEvent;
-use HTNProtocol\Models\PlayerEvent;
 use HTNProtocol\Models\PlayerMessageEvent;
 use HTNProtocol\Models\Requests\PlayerPunish;
-use PDO;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerChatEvent;
 use pocketmine\event\player\PlayerJoinEvent;
@@ -15,7 +12,6 @@ use poggit\libasynql\DataConnector;
 
 class Events implements Listener {
     public function __construct(
-        private ClientSocket $sock,
         private DataConnector $db
     ) {
     }
