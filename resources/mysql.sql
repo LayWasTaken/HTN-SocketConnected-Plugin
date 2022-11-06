@@ -24,21 +24,20 @@ WHERE xuid = :xuid;
 -- #{discord_codes 
 -- #    {insert
 -- #        :xuid string
--- #        :discord string
+-- #        :name string
 -- #        :code string
 INSERT INTO discord_codes
 VALUES (
         :xuid,
-        :discord,
+        :name,
         :code
     );
 -- #    }
 -- #    {init
 CREATE TABLE IF NOT EXISTS discord_codes (
-    xuid VARCHAR(255),
-    discord VARCHAR(255) NOT NULL,
-    code varchar(6) NOT NULL,
-    PRIMARY KEY (xuid)
+    xuid VARCHAR(255) NOT NULL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNQUE,
+    code varchar(6) NOT NULL
 );
 -- #    }
 -- #}
