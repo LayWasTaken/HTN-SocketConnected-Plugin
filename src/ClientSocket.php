@@ -1,311 +1,99 @@
 <?php
-
 namespace HTNProtocol;
 
-use HTNProtocol\Events\DataReceivedEvent;
-use HTNProtocol\Events\RequestReceivedEvent;
-use HTNProtocol\Receivable;
+use Exception;
 use pocketmine\plugin\Plugin;
+use Ramsey\Uuid\Uuid;
 use SOFe\AwaitGenerator\Await;
 use SOFe\AwaitStd\AwaitStd;
-use WebSocket\Client;
+
 class ClientSocket {
-    private Client $sock;
-    private $std;
     /**
-     * @var Request[] $requests
+     * @var \Closure[] $requests
      */
-    private array $requests = [];
+    private array $requests;
     /**
-     * @var Receivable[] $receivables
+     * @var \Closure[] $receivables
      */
-    private array $receivables = [];
+    private array $receivables;
+    private array $receivables_class;
 
-    public function __construct(
-        private string $host,
-        private int $port,
-        private string $password,
-        private string $clientName,
-        private Plugin $plugin
-    ) {
+    private \Threaded $input;
+    private \Threaded $output;
+    private SocketThread $thread;
+    private AwaitStd $std;
+
+    public function __construct(Plugin $plugin)
+    {
+        $this->receivables = [];
+        $this->receivables_class = [];
+        $this->input = new \Threaded;
+        $this->output = new \Threaded;
         $this->std = AwaitStd::init($plugin);
-        $this->createConnection() ? 0 : $this->reconnect();
-    }
-
-    private function createConnection(): bool {
-        require_once __DIR__ . '/../vendor/autoload.php';
-        try {
-            $this->sock = new Client("ws://{$this->host}:{$this->port}/");
-            $this->sock->text(
-                json_encode([
-                    'name' => $this->clientName,
-                    'password' => $this->password,
-                ])
-            );
-            $this->handleSentData();
-            return true;
-        } catch (\Throwable $th) {
-            return false;
-        }
-        return true;
-    }
-
-    private function reconnect() {
-        Await::f2c(function () {
+        Await::f2c(function(){
             while (true) {
-                $success = $this->createConnection();
-                if (!$success) {
-                    yield from $this->std->sleep(4);
-                    continue;
+                $count = $this->output->count();
+                $snapshot = $this->output->chunk($count > 50 ? 50 : $count);
+                foreach ($snapshot as $key => $value) {
+                    [$api, $type] = str_split($key, 3);
+                    [$id, $dt] = str_split($type, 32);
+                    if($api === "RES"){
+                        if(!array_key_exists($id, $this->requests)) continue;
+                        $this->requests[$id]->__invoke($value);
+                        unset($this->requests[$id]);
+                        continue;
+                    }
+                    $this->receivables[$dt]->__invoke($value);
                 }
-                break;
-            }
-        });
-    }
-
-    private function handleSentData() {
-        Await::f2c(function () {
-            $this->sock->setTimeout(0.02);
-            while (true) {
-                if (!$this->sock->isConnected()) {
-                    yield from $this->std->sleep(1);
-                    return $this->reconnect();
-                }
-                try {
-                    $data = $this->sock->receive();
-                    $json = json_decode($data, true);
-                    if ($json['from'] === 'Server') {
-                        yield from $this->std->sleep(1);
-                        continue;
-                    }
-                    var_dump($json);
-                    if (array_key_exists('api', $json) && $json['api']) {
-                        if ($json['api'] === 'response') {
-                            $this->requests[$json['id']]->callback->__invoke(
-                                $json['data_type'] === 'success'
-                                    ? null
-                                    : $json['data']
-                            );
-                            $this->requests[$json['id']]->endTask();
-                            yield from $this->std->sleep(1);
-                            continue;
-                        }
-                        $data = $this->checkSentData(
-                            $json['from'],
-                            $json['data_type'],
-                            $json['data']
-                        );
-                        if (is_string($data)) {
-                            yield from $this->std->sleep(1);
-                            continue;
-                        }
-
-                        $this->receivables[
-                            $json['data_type']
-                        ]->onReceive->__invoke($data, $json['id']);
-                        (new RequestReceivedEvent($data, $json['id']))->call();
-                        yield from $this->std->sleep(1);
-                        continue;
-                    }
-                    $data = $this->checkSentData(
-                        $json['from'],
-                        $json['data_type'],
-                        $json['data']
-                    );
-                    if (is_string($data)) {
-                        yield from $this->std->sleep(1);
-                        continue;
-                    }
-                    if ($json['api'] === 'response') {
-                        $this->requests[$json['id']]->callback->__invoke($data);
-                        $this->requests[$json['id']]->endTask();
-                        yield from $this->std->sleep(1);
-                        continue;
-                    }
-                    if ($this->receivables[$json['data_type']]->onReceive) {
-                        $this->receivables[
-                            $json['data_type']
-                        ]->onReceive->__invoke($data);
-                    }
-                    (new DataReceivedEvent($data))->call();
-                    yield from $this->std->sleep(1);
-                } catch (\Throwable $th) {
-                    yield $this->std->sleep(1);
-                }
+                yield from $this->std->sleep(1);
             }
         });
     }
 
     /**
-     * @return object|false it will return false if it has invalid data, it will return a object if everything is valid
+     * @param object $data any object
+     * @param string $data_type don't add it if the data_type is the same as the $data class name 
      */
-    private function checkSentData(
-        string $from,
-        string $dataType,
-        array $data
-    ): object|string {
-        if (!($receivable = @$this->receivables[$dataType])) {
-            return 'Array doesnt exist';
-        }
-        if (in_array($from, $receivable->acceptables)) {
-            return $this->checkIfValidClassObject(
-                $receivable->namespace,
-                $data
-            );
-        }
-        return 'Cannot accept client';
-    }
-    // prettier-ignore
-    function checkIfValidClassObject(string $class, array $obj) : object|bool {
-        try { $ref = new \ReflectionClass($class); } catch (\ReflectionException $e) { return false; }
-        $new = $ref->newInstanceWithoutConstructor();
-        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC|\ReflectionProperty::IS_PROTECTED|\ReflectionProperty::IS_PRIVATE) as $p) {
-            if (!isset($obj[$p->getName()]) && !$p->hasDefaultValue() && $p->getType() !== null && !$p->getType()->allowsNull()) return false;
-            try { (function() use ($obj, $p, $new) {
-                $new->{$p->getName()} = $obj[$p->getName()] ?? ($p->hasDefaultValue() ? $p->getDefaultValue() : null);
-            })->call($new); } catch (\TypeError $e) { return false; }
-        }
-        return $new;
-    }
-    /**
-     * @param string|string[] $to
-     */
-    public function sendData(object $data, string|array $to): bool {
-        if (!$this->sock->isConnected()) {
-            return false;
-        }
-        $json = [
-            'data' => $data,
-            'data_type' => (new \ReflectionClass($data))->getShortName(),
-        ];
-        $json['to'] = $to;
-        $send = json_encode($json);
-        try {
-            $this->sock->text($send);
-            return true;
-        } catch (\Throwable $th) {
-            return $th->getMessage();
-            return false;
-        }
-    }
-
-    public function sendRequest(
-        object $data,
-        string|array $to,
-        \Closure $responseCallback,
-        int $expire = 3
-    ) {
-        if (!$this->isOn) {
-            return false;
-        }
-        $json = [
-            'data' => $data,
-            'data_type' => (new \ReflectionClass($data))->getShortName(),
-        ];
-        $json['to'] = $to;
-        $json['api'] = 'request';
-        $json['id'] = \Ramsey\Uuid\v4();
-        $send = json_encode($json);
-        try {
-            $this->sock->text($send);
-            $task = $this->plugin->getScheduler()->scheduleDelayedTask(
-                new class ($this->requests, $json['id']) extends
-                    \pocketmine\scheduler\Task {
-                    public function __construct(
-                        private array &$requests,
-                        private string $id
-                    ) {
-                    }
-                    public function onRun(): void {
-                        if (!$this->requests[$this->id]) {
-                            return;
-                        }
-                        unset($this->requests[$this->id]);
-                    }
-                },
-                20 * $expire
-            );
-            $this->requests[$json['id']] = new Request(
-                $task,
-                $responseCallback
-            );
-            return true;
-        } catch (\Throwable $th) {
-            return false;
-        }
+    public function sendData(object $data, string $data_type = null){
+        $type = $data_type ?? (new \ReflectionClass($data))->getShortName();
+        $this->input["SEN"+Uuid::uuid4()+$type] = $data;
     }
 
     /**
-     * @param \HTNProtocol\Streams\JsonStream|string $send String if error, none or a JsonStream object means it's a success
+     * @param object $data any object
+     * @param string $data_type don't add it if the data_type is the same as the $data class name 
      */
-    public function sendResponse(
-        string|array $to,
-        string $id,
-        object|string|null $data = null
-    ) {
-        if (!$this->sock->isConnected()) {
-            return false;
-        }
-        $toEncode = [
-            'data_type' => 'success',
-            'data' => null,
-            'api' => 'response',
-            'id' => $id,
-            'to' => $to,
-        ];
-        if (is_object($data)) {
-            $send = [
-                'data' => $data,
-                'data_type' => (new \ReflectionClass($data))->getShortName(),
-            ];
-            $toEncode['data_type'] = $send['data_type'];
-            $toEncode['data'] = $send['data'];
-        }
-
-        if (is_string($data)) {
-            $toEncode['data_type'] = 'error';
-            $toEncode['data'] = $data;
-        }
-        $send = json_encode($toEncode);
-        try {
-            $this->sock->text($send);
-            return true;
-        } catch (\Throwable $th) {
-            return false;
-        }
+    public function sendRequest(object $data, string $data_type = null){
+        $uuid = Uuid::uuid4();
+        $type = $data_type ?? (new \ReflectionClass($data))->getShortName();
+        $this->input["REQ"+$uuid+$type] = $data;
+        Await::f2c(function() use ($uuid){
+            yield from $this->std->sleep(20*10);
+            try { unset($this->requests[$uuid]); } finally {}
+        });
+        return $uuid;
     }
+
     /**
-     * @param string[] $acceptables
+     * @param object $data any object
+     * @param string $data_type don't add it if the data_type is the same as the $data class name 
+     * @param int $id it should be a 32 long uuid v4 string
      */
-    public function registerReceivable(
-        string|object $classORobject,
-        array $acceptables,
-        \Closure $onReceive = null,
-        bool $override = false
-    ): bool|string {
-        if (is_string($classORobject) && !class_exists($classORobject)) {
-            return 'Argument 1 given a invalid class';
-        }
-        $shortName = (new \ReflectionClass($classORobject))->getShortName();
-        if (array_key_exists($shortName, $this->receivables) && !$override) {
-            return 'Class already exists';
-        }
-        $namespace = is_string($classORobject)
-            ? $classORobject
-            : $classORobject::class;
-        $receive = Receivable::create($namespace, $acceptables, $onReceive);
-        if (is_string($receive)) {
-            return $receive;
-        }
-        $this->receivables[$shortName] = $receive;
-        return true;
+    public function sendResponse(object $data, string $id, string $data_type = null){
+        $type = $data_type ?? (new \ReflectionClass($data))->getShortName();
+        $this->input["RES"+$id+$type] = $data;
     }
 
-    public function closeConnection() {
-        $this->sock->setTimeout(5);
-        $this->sock->close();
+    public function addReceivable(string $class, \Closure $onReceive){
+        if(!class_exists($class)) throw new Exception("Class doesn't exists");
+        $shortname = (new \ReflectionClass($class))->getShortName();
+        $this->receivables[$shortname] = $onReceive;
+        $this->receivables_class[$shortname] = $class;
     }
-    public function getCurrentRequests() {
-        return $this->requests;
+
+    public function start(string $ip, int $port, string $token){ 
+        $this->thread = new SocketThread($this->input, $this->output, $ip, $port, $token, $this->receivables);
+        $this->thread->start(); 
     }
+
 }
